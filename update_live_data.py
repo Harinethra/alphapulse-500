@@ -16,7 +16,8 @@ HIGH_IMPACT_KEYWORDS = [
     "order", "contract", "award", "letter of intent", "loi", "acquisition",
     "amalgamation", "demerger", "buyback", "capacity expansion", "commercial production",
     "usfda", "clearance", "resignation", "auditor", "cfo", "default",
-    "credit rating", "sebi", "joint venture", "mou", "preferential", "financial results"
+    "credit rating", "sebi", "joint venture", "mou", "preferential", "financial results",
+    "outcome", "board meeting", "dividend", "press release", "investor presentation"
 ]
 
 def fetch_nse_announcements():
@@ -31,7 +32,7 @@ def fetch_nse_announcements():
         session.get("https://www.nseindia.com", headers=headers, timeout=10)
         res = session.get("https://www.nseindia.com/api/corporate-announcements?index=equities", headers=headers, timeout=15)
         res.raise_for_status()
-        return res.json()[:25] # சமீபத்திய 25 அறிவிப்புகள்
+        return res.json()[:25]
     except Exception as e:
         print(f"NSE Fetch Error: {e}")
         return []
@@ -82,7 +83,7 @@ def get_stock_metrics(symbol):
         return None
 
 def analyze_with_gemini(filing, metrics):
-    """Gemini AI மூலம் தமிழ் மற்றும் ஆங்கிலத்தில் செய்தியின் தாக்கத்தை அலசும்"""
+    """Gemini 3.8 Flash மூலம் தமிழ் மற்றும் ஆங்கிலத்தில் செய்தியின் தாக்கத்தை அலசும்"""
     client = genai.Client(api_key=GEMINI_API_KEY)
     prompt = f"""
     Analyze this NSE exchange announcement as an Institutional Research Analyst:
@@ -106,7 +107,7 @@ def analyze_with_gemini(filing, metrics):
     """
     try:
         res = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=prompt,
             config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2)
         )
@@ -127,13 +128,13 @@ def send_telegram_alert(card):
         f"• *CMP:* ₹{card['cmp']} | *Target:* ₹{card['target']} | *SL:* ₹{card['sl']}\n"
         f"🔗 [NSE Official PDF]({card['pdf_url']})"
     )
-    requests.post(
+    res = requests.post(
         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
         json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"}
     )
+    print(f"Alert sent for {card['symbol']} - Telegram Status: {res.status_code}")
 
 def main():
-    # ஏற்கனவே உள்ள பழைய டேட்டாவை எடுக்கும்
     existing_cards = []
     if os.path.exists(DATA_FILE):
         try:
@@ -164,7 +165,6 @@ def main():
         if not ai_data:
             continue
 
-        # Multi-Factor 100-Point Score கணக்கீடு
         cat_pts = min(max(int(ai_data.get("catalyst_score_out_of_30", 15)), 0), 30)
         tech_pts = (10 if metrics["above_200dma"] else 3) + (15 if metrics["vol_ratio"] >= 2.0 else 7) - (8 if metrics["is_overextended"] else 0)
         fund_pts = (15 if metrics["roe"] >= 15 else 8) + (10 if metrics["de"] <= 0.6 else 4)
@@ -199,13 +199,12 @@ def main():
         seen_ids.add(seq_id)
         new_count += 1
 
-        if total_score >= 70 or card["verdict"] == "AVOID":
-            send_telegram_alert(card)
+        # முதல் முறை டெஸ்ட் செய்ய எல்லா புதிய பங்குகளுக்கும் Telegram Alert அனுப்பும்!
+        send_telegram_alert(card)
 
-        if new_count >= 5: # ஒரு முறை ரன் ஆகும்போது அதிகபட்சம் 5 புதிய பங்குகள்
+        if new_count >= 4:
             break
 
-    # சமீபத்திய 30 கார்டுகளை மட்டும் சேமிக்கும்
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(existing_cards[:30], f, ensure_ascii=False, indent=2)
     print(f"Added {new_count} new live calls.")
