@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlphaPulse 500 - Live Stock Research Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="h-3 w-3 rounded-full bg-emerald-400 animate-pulse"></span>
+          <h1 class="text-xl font-bold tracking-tight text-white">AlphaPulse 500 <span class="text-xs font-normal bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full ml-1">LIVE ENGINE</span></h1>
+        </div>
+        <p id="subHeader" class="text-xs text-slate-400 mt-0.5">NSE Nifty 500 உடனடி செய்தி & ஆராய்ச்சி உதவி</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleLang()" id="langBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold border border-slate-700">
+          🌐 English / தமிழ்
+        </button>
+        <button onclick="fetchLiveGitHubData()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white">
+          🔄 Refresh Live
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6">
+    <!-- Investment Calculator Bar -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-xs text-slate-400">💰 உங்கள் முதலீட்டுத் தொகை (லாபக் கணக்கிற்கு):</p>
+        <p class="text-sm font-semibold text-emerald-400" id="capDisplay">தேர்ந்தெடுத்த தொகை: ₹25,000</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="setCapital(10000)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold border border-slate-700">₹10,000</button>
+        <button onclick="setCapital(25000)" class="px-3 py-1.5 rounded-lg bg-emerald-600/30 border border-emerald-500 text-xs font-bold text-emerald-300">₹25,000</button>
+        <button onclick="setCapital(50000)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold border border-slate-700">₹50,000</button>
+        <button onclick="setCapital(100000)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold border border-slate-700">₹1,00,000</button>
+      </div>
+    </div>
+
+    <div id="statusBanner" class="text-xs text-slate-400 mb-4 flex items-center justify-between">
+      <span>📡 Live NSE डेटा இணைக்கப்பட்டுள்ளது</span>
+      <span id="lastUpdated">புதுப்பிக்கப்படுகிறது...</span>
+    </div>
+
+    <!-- Cards Container -->
+    <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+  </main>
+
+  <script>
+    let lang = 'ta';
+    let capital = 25000;
+    let stocksData = [
+      {
+        id: "demo-1",
+        symbol: "BEL",
+        name: "Bharat Electronics Ltd",
+        sector: "Defense & Aerospace",
+        time: "Sample Card (Run GitHub Action for Live Data)",
+        score: 88,
+        verdict: "BUY",
+        cmp: 295.5,
+        target: 332.0,
+        sl: 279.0,
+        vol_spike: "3.4x",
+        two_wk_rally: "4.2%",
+        roe: "24.5%",
+        de: "0.0",
+        pdf_url: "https://www.nseindia.com",
+        news_ta: "₹2,100 கோடி மதிப்பிலான புதிய ரேடார் ஆர்டர் கிடைத்துள்ளது (வருட வருமானத்தில் 12%).",
+        news_en: "Secured ₹2,100 Cr defense radar order (12% of annual revenue materiality).",
+        buy_check_ta: "கடந்த 2 வாரத்தில் 4% மட்டுமே ஏறியுள்ளது. வால்யூம் 3.4 மடங்கு அதிகம். வாங்க சிறந்த இடம்!",
+        buy_check_en: "Up only 4.2% in 2 weeks (not priced-in). Strong 3.4x institutional volume.",
+        domino_ta: "பாரத் டைனமிக்ஸ் (BDL), அஸ்ட்ரா மைக்ரோவேவ் (ASTRAMICRO)",
+        domino_en: "BDL, Astra Microwave, Data Patterns"
+      }
+    ];
+
+    function setCapital(amount) {
+      capital = amount;
+      document.getElementById('capDisplay').innerText = `தேர்ந்தெடுத்த தொகை: ₹${amount.toLocaleString('en-IN')}`;
+      renderCards();
+    }
+
+    function toggleLang() {
+      lang = lang === 'ta' ? 'en' : 'ta';
+      renderCards();
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('cardsGrid');
+      grid.innerHTML = stocksData.map(s => {
+        const qty = Math.max(1, Math.floor(capital / s.cmp));
+        const estProfit = Math.round(qty * (s.target - s.cmp));
+        const badgeColor = s.verdict === 'BUY' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                           s.verdict === 'AVOID' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
+                           'bg-amber-500/20 text-amber-300 border-amber-500/40';
+
+        return `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <span class="text-xs text-slate-400">${s.sector} • ${s.time}</span>
+                  <h2 class="text-lg font-bold text-white">${s.symbol} <span class="text-xs font-normal text-slate-400">(${s.name})</span></h2>
+                </div>
+                <div class="text-right">
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold border ${badgeColor}">${s.verdict} • ${s.score}/100</span>
+                </div>
+              </div>
+
+              <div class="space-y-3 text-sm mt-4">
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
+                  <p class="text-xs font-bold text-emerald-400 mb-1">1. ${lang === 'ta' ? 'என்ன செய்தி?' : 'What is the Catalyst?'}</p>
+                  <p class="text-slate-200 text-xs leading-relaxed">${lang === 'ta' ? s.news_ta : s.news_en}</p>
+                </div>
+
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
+                  <p class="text-xs font-bold text-sky-400 mb-1">2. ${lang === 'ta' ? 'இப்போ வாங்கலாமா?' : 'Is it Priced-In?'}</p>
+                  <p class="text-slate-200 text-xs leading-relaxed">${lang === 'ta' ? s.buy_check_ta : s.buy_check_en}</p>
+                </div>
+
+                <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
+                  <p class="text-xs font-bold text-amber-400 mb-1">3. ${lang === 'ta' ? 'விலை இலக்கு & லாபக் கணக்கு' : 'Actionable Levels & Profit'}</p>
+                  <div class="grid grid-cols-3 gap-2 text-center my-2">
+                    <div class="bg-slate-900 p-2 rounded-lg"><span class="block text-[10px] text-slate-400">CMP</span><span class="font-bold text-white">₹${s.cmp}</span></div>
+                    <div class="bg-slate-900 p-2 rounded-lg"><span class="block text-[10px] text-emerald-400">Target</span><span class="font-bold text-emerald-400">₹${s.target}</span></div>
+                    <div class="bg-slate-900 p-2 rounded-lg"><span class="block text-[10px] text-rose-400">Stop Loss</span><span class="font-bold text-rose-400">₹${s.sl}</span></div>
+                  </div>
+                  <p class="text-[11px] text-emerald-300 mt-1">💡 ₹${capital.toLocaleString('en-IN')} முதலீட்டில் <b>${qty} ஷேர்</b> வாங்கினால் எதிர்பார்க்கும் லாபம்: <b>+₹${estProfit.toLocaleString('en-IN')}</b></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span>Vol: <b class="text-white">${s.vol_spike}</b> | ROE: <b class="text-white">${s.roe}</b></span>
+              <a href="${s.pdf_url}" target="_blank" class="text-emerald-400 hover:underline font-semibold">📄 NSE Official PDF ↗</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function fetchLiveGitHubData() {
+      try {
+        const res = await fetch('./live_data.json?t=' + new Date().getTime());
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          stocksData = data;
+          document.getElementById('lastUpdated').innerText = 'Live Updated: ' + new Date().toLocaleTimeString();
+          renderCards();
+        }
+      } catch (e) {
+        console.log('Waiting for first GitHub Action run...');
+      }
+    }
+
+    renderCards();
+    fetchLiveGitHubData();
+    setInterval(fetchLiveGitHubData, 60000);
+  </script>
+</body>
+</html>
