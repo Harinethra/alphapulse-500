@@ -1,2 +1,2 @@
 # alphapulse-500
-by using gemini
+Ai predicted calls
