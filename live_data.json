@@ -1,5 +1,28 @@
 [
   {
+    "id": "106863790",
+    "symbol": "JITFINFRA",
+    "name": "JITF Infralogistics Limited",
+    "sector": "Industrials",
+    "time": "17-Nov-2026 17:03:24",
+    "score": 43,
+    "verdict": "AVOID",
+    "cmp": 254.25,
+    "target": 284.76,
+    "sl": 232.87,
+    "vol_spike": "0.74x",
+    "two_wk_rally": "-3.5%",
+    "roe": "0%",
+    "de": "0.0",
+    "pdf_url": "https://nsearchives.nseindia.in/corporate/JITFINFRA_ROID_104965_KMP_Doc.zip",
+    "news_ta": "JITF இன்ஃப்ராலாஜிஸ்டிக்ஸ் நிறுவனத்தின் முக்கிய நிர்வாகி/இயக்குநர் ராஜினாமா செய்துள்ளார்; இதனால் நிறுவன வருவாயில் நேரடி தாக்கம் எதுவும் இல்லை (0%).",
+    "news_en": "JITF Infralogistics announced the resignation of a Director/KMP/SMP, which has zero direct revenue impact but flags minor governance churn.",
+    "buy_check_ta": "விலை 3.5% சரிவிலும் வால்யூம் 0.74x ஆக மந்தமாகவும் உள்ளது; தலைமை மாற்றத்தால் தற்போதைக்கு இதில் புதிய முதலீடுகளைத் தவிர்ப்பது நல்லது.",
+    "buy_check_en": "Trading at subdued volumes (0.74x) with a negative 2-week drift (-3.5%), this KMP exit provides no buying catalyst; avoid fresh entry.",
+    "domino_ta": "இது உள் நிர்வாக மாற்றம் என்பதால் பிற துறைகளில் தாக்கம் இல்லை; நிலையான மேலாண்மை கொண்ட பிற லாஜிஸ்டிக்ஸ் பங்குகள் விரும்பப்படலாம்.",
+    "domino_en": "No systemic domino effect; well-managed logistics and infrastructure peers with stable leadership remain better alternatives."
+  },
+  {
     "id": "106862323",
     "symbol": "CELEBRITY",
     "name": "Celebrity Fashions Limited",
