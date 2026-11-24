@@ -13,18 +13,17 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 DATA_FILE = "live_data.json"
 
-# 30 seconds max timeout set panni irukkom (6-hour hang-ai thadukka)
+# 60 seconds max timeout (504 DEADLINE_EXCEEDED & 6-hour hang-ai thadukka)
 client = genai.Client(
     api_key=GEMINI_API_KEY,
-    http_options=types.HttpOptions(timeout=30000)
+    http_options=types.HttpOptions(timeout=60000)
 ) if GEMINI_API_KEY else None
 
-# Primary model 503 busy-ah irundha automatic-ah next stable model-ku maarum
+# Active Gemini 3.x models mattum (2.5 & 2.0 retired)
 GEMINI_MODELS = [
-    "gemini-3.8-flash",
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-2.0-flash"
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash"
 ]
 
 HIGH_IMPACT_KEYWORDS = [
