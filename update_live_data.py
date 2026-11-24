@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 import yfinance as yf
 import numpy as np
@@ -11,6 +12,20 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 DATA_FILE = "live_data.json"
+
+# 30 seconds max timeout set panni irukkom (6-hour hang-ai thadukka)
+client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(timeout=30000)
+) if GEMINI_API_KEY else None
+
+# Primary model 503 busy-ah irundha automatic-ah next stable model-ku maarum
+GEMINI_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash"
+]
 
 HIGH_IMPACT_KEYWORDS = [
     "order", "contract", "award", "letter of intent", "loi", "acquisition",
@@ -83,8 +98,11 @@ def get_stock_metrics(symbol):
         return None
 
 def analyze_with_gemini(filing, metrics):
-    """Gemini 3.8 Flash மூலம் தமிழ் மற்றும் ஆங்கிலத்தில் செய்தியின் தாக்கத்தை அலசும்"""
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    """Fallback மாடல்களுடன் தமிழ் மற்றும் ஆங்கிலத்தில் செய்தியின் தாக்கத்தை அலசும்"""
+    if not client:
+        print("GEMINI_API_KEY missing!")
+        return None
+
     prompt = f"""
     Analyze this NSE exchange announcement as an Institutional Research Analyst:
     Company: {filing.get('sm_name')} ({metrics['symbol']})
@@ -105,34 +123,56 @@ def analyze_with_gemini(filing, metrics):
         "domino_en": "Second-order beneficiary stocks/sectors in English"
     }}
     """
-    try:
-        res = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.2)
-        )
-        return json.loads(res.text)
-    except Exception as e:
-        print(f"Gemini error: {e}")
-        return None
+
+    for model_name in GEMINI_MODELS:
+        for attempt in range(2):
+            try:
+                res = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.2
+                    )
+                )
+                if res and res.text:
+                    print(f"Success using {model_name} for {metrics['symbol']}")
+                    return json.loads(res.text)
+            except Exception as e:
+                print(f"[{model_name}] Attempt {attempt + 1} failed for {metrics['symbol']}: {e}")
+                time.sleep(2)
+
+    return None
+
+def escape_md(text):
+    """Telegram Markdown parse error வராமல் இருக்க special characters-ஐ சுத்தம் செய்யும்"""
+    if not text:
+        return ""
+    for ch in ["_", "*", "`", "["]:
+        text = str(text).replace(ch, "")
+    return text
 
 def send_telegram_alert(card):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
     msg = (
-        f"🚨 *LIVE NIFTY 500 CALL: {card['symbol']}*\n"
-        f"🏆 *Score:* `{card['score']}/100` | *Verdict:* *{card['verdict']}*\n\n"
-        f"📰 *என்ன செய்தி?*\n{card['news_ta']}\n\n"
-        f"💡 *இப்போ வாங்கலாமா?*\n{card['buy_check_ta']}\n\n"
+        f"🚨 *LIVE NIFTY 500 CALL: {escape_md(card['symbol'])}*\n"
+        f"🏆 *Score:* `{card['score']}/100` | *Verdict:* *{escape_md(card['verdict'])}*\n\n"
+        f"📰 *என்ன செய்தி?*\n{escape_md(card['news_ta'])}\n\n"
+        f"💡 *இப்போ வாங்கலாமா?*\n{escape_md(card['buy_check_ta'])}\n\n"
         f"🎯 *Price Levels:*\n"
         f"• *CMP:* ₹{card['cmp']} | *Target:* ₹{card['target']} | *SL:* ₹{card['sl']}\n"
         f"🔗 [NSE Official PDF]({card['pdf_url']})"
     )
-    res = requests.post(
-        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-        json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"}
-    )
-    print(f"Alert sent for {card['symbol']} - Telegram Status: {res.status_code}")
+    try:
+        res = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "Markdown"},
+            timeout=15
+        )
+        print(f"Alert sent for {card['symbol']} - Telegram Status: {res.status_code}")
+    except Exception as e:
+        print(f"Telegram send error for {card['symbol']}: {e}")
 
 def main():
     existing_cards = []
@@ -199,7 +239,6 @@ def main():
         seen_ids.add(seq_id)
         new_count += 1
 
-        # முதல் முறை டெஸ்ட் செய்ய எல்லா புதிய பங்குகளுக்கும் Telegram Alert அனுப்பும்!
         send_telegram_alert(card)
 
         if new_count >= 4:
