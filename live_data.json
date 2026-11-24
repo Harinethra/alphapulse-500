@@ -1,5 +1,28 @@
 [
   {
+    "id": "106869938",
+    "symbol": "LEMONTREE",
+    "name": "Lemon Tree Hotels Limited",
+    "sector": "Consumer Cyclical",
+    "time": "24-Nov-2026 22:45:30",
+    "score": 56,
+    "verdict": "WATCH",
+    "cmp": 127.63,
+    "target": 142.95,
+    "sl": 121.61,
+    "vol_spike": "0.91x",
+    "two_wk_rally": "8.7%",
+    "roe": "16.3%",
+    "de": "0.83",
+    "pdf_url": "https://nsearchives.nseindia.in/corporate/LEMONTREE_24112026224519_Intimation.pdf",
+    "news_ta": "லெமன் ட்ரீ ஹோட்டல்ஸ் நிறுவனம் கொம்பள்ளியில் புதிய ஹோட்டல் அமைக்க உரிம ஒப்பந்தம் செய்துள்ளது. இது நிறுவனத்தின் ஆண்டு வருமானத்தில் 0.1%-க்கும் குறைவான பங்களிப்பை மட்டுமே தரும் என்பதால் மிகச்சிறிய செய்தி.",
+    "news_en": "Lemon Tree Hotels signed a license agreement for a new hotel in Kompally. This is a routine expansion adding negligible immediate materiality (<0.1%) to the ₹1,530 Cr annual revenue.",
+    "buy_check_ta": "தவிர்க்கவும்; 8.7% விலை உயர்வு ஏற்கனவே சந்தையில் விலையேற்றப்பட்டுவிட்டது (priced-in). 0.91x குறைவான வால்யூம் இருப்பதால் இப்போது அவசரப்பட்டு வாங்குவதைத் தவிர்க்கலாம்.",
+    "buy_check_en": "Avoid immediate buying; the 8.7% recent price rally indicates it is largely priced-in, and the sub-par 0.91x volume spike signals a lack of aggressive institutional accumulation.",
+    "domino_ta": "இந்திய ஹோட்டல் மற்றும் சுற்றுலா துறை பங்குகள் (Indian Hotel Stocks & Tourism Sector)",
+    "domino_en": "Indian hospitality and hotel franchise sectors"
+  },
+  {
     "id": "106869803",
     "symbol": "INDIAMART",
     "name": "Indiamart Intermesh Limited",
