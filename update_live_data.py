@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import time
 import requests
 import yfinance as yf
@@ -13,13 +14,11 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 DATA_FILE = "live_data.json"
 
-# 60 seconds max timeout (504 DEADLINE_EXCEEDED & 6-hour hang-ai thadukka)
 client = genai.Client(
     api_key=GEMINI_API_KEY,
     http_options=types.HttpOptions(timeout=60000)
 ) if GEMINI_API_KEY else None
 
-# Active Gemini 3.x models mattum (2.5 & 2.0 retired)
 GEMINI_MODELS = [
     "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
@@ -33,6 +32,9 @@ HIGH_IMPACT_KEYWORDS = [
     "credit rating", "sebi", "joint venture", "mou", "preferential", "financial results",
     "outcome", "board meeting", "dividend", "press release", "investor presentation"
 ]
+
+def is_valid_num(val):
+    return val is not None and not math.isnan(float(val)) and not math.isinf(float(val))
 
 def fetch_nse_announcements():
     """NSE India வெப்சைட்டில் இருந்து Live அறிவிப்புகளை எடுக்கும்"""
@@ -60,31 +62,39 @@ def get_stock_metrics(symbol):
         if hist.empty or len(hist) < 30:
             return None
 
-        close = hist["Close"]
-        volume = hist["Volume"]
+        close = hist["Close"].dropna()
+        volume = hist["Volume"].dropna()
+        if len(close) < 15 or len(volume) < 21:
+            return None
+
         current_price = float(close.iloc[-1])
+        if not is_valid_num(current_price) or current_price <= 0:
+            return None
+
         sma_50 = float(close.rolling(50).mean().iloc[-1]) if len(close) >= 50 else current_price
         sma_200 = float(close.rolling(200).mean().iloc[-1]) if len(close) >= 200 else sma_50
 
         avg_vol_20 = float(volume.iloc[-21:-1].mean())
-        vol_ratio = round(float(volume.iloc[-1]) / avg_vol_20, 2) if avg_vol_20 > 0 else 1.0
+        vol_ratio = round(float(volume.iloc[-1]) / avg_vol_20, 2) if (is_valid_num(avg_vol_20) and avg_vol_20 > 0) else 1.0
 
         price_10d_ago = float(close.iloc[-11]) if len(close) >= 11 else current_price
-        two_week_return_pct = round(((current_price - price_10d_ago) / price_10d_ago) * 100, 1)
+        two_week_return_pct = round(((current_price - price_10d_ago) / price_10d_ago) * 100, 1) if price_10d_ago > 0 else 0.0
         is_overextended = two_week_return_pct > 20.0
 
-        high_low = hist["High"] - hist["Low"]
-        atr_14 = float(high_low.rolling(14).mean().iloc[-1])
+        high_low = (hist["High"] - hist["Low"]).dropna()
+        atr_14 = float(high_low.rolling(14).mean().iloc[-1]) if len(high_low) >= 14 else (current_price * 0.03)
+        if not is_valid_num(atr_14):
+            atr_14 = current_price * 0.03
 
         return {
             "symbol": symbol,
             "cmp": round(current_price, 2),
             "target": round(current_price * 1.12, 2),
             "sl": round(current_price - (1.8 * atr_14), 2),
-            "above_200dma": current_price > sma_200,
-            "vol_ratio": vol_ratio,
-            "two_week_return_pct": two_week_return_pct,
-            "is_overextended": is_overextended,
+            "above_200dma": bool(current_price > sma_200),
+            "vol_ratio": vol_ratio if is_valid_num(vol_ratio) else 1.0,
+            "two_week_return_pct": two_week_return_pct if is_valid_num(two_week_return_pct) else 0.0,
+            "is_overextended": bool(is_overextended),
             "revenue_cr": round((info.get("totalRevenue", 0) or 0) / 1e7, 1),
             "mcap_cr": round((info.get("marketCap", 0) or 0) / 1e7, 1),
             "roe": round((info.get("returnOnEquity", 0) or 0) * 100, 1),
@@ -144,7 +154,6 @@ def analyze_with_gemini(filing, metrics):
     return None
 
 def escape_md(text):
-    """Telegram Markdown parse error வராமல் இருக்க special characters-ஐ சுத்தம் செய்யும்"""
     if not text:
         return ""
     for ch in ["_", "*", "`", "["]:
@@ -173,12 +182,22 @@ def send_telegram_alert(card):
     except Exception as e:
         print(f"Telegram send error for {card['symbol']}: {e}")
 
+def sanitize_cards(cards):
+    """ஏற்கனவே உள்ள NaN மதிப்புகளை சுத்தம் செய்து Valid JSON ஆக மாற்றும்"""
+    clean = []
+    for c in cards:
+        cmp_val = c.get("cmp")
+        if not is_valid_num(cmp_val):
+            continue
+        clean.append(c)
+    return clean
+
 def main():
     existing_cards = []
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                existing_cards = json.load(f)
+                existing_cards = sanitize_cards(json.load(f))
         except Exception:
             existing_cards = []
 
@@ -244,7 +263,7 @@ def main():
             break
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(existing_cards[:30], f, ensure_ascii=False, indent=2)
+        json.dump(existing_cards[:30], f, ensure_ascii=False, indent=2, allow_nan=False)
     print(f"Added {new_count} new live calls.")
 
 if __name__ == "__main__":
